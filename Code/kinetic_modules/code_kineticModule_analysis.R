@@ -1,6 +1,6 @@
 ##program to calculate kinetic modules
 k=(commandArgs(TRUE))
-k=as.numeric(k)
+#k=as.numeric(k)
 print(k)
 print('------------')
 
@@ -8,10 +8,10 @@ library(R.matlab)
 library(igraph)
 setwd('../../Results/concordant/')
 
-filename <- dir(".","*.mat")
+#filename <- dir(".","*.mat")
 
-print(filename[k])
-s <- readMat(filename[k])
+print(k)
+s <- readMat(k)
 adjm <- s$Results.balanced[,,1]$MODEL.r[[1]][[1]][,,1]$A
 g <- graph.empty(n = nrow(adjm), directed = TRUE)
 for (j in 1:ncol(adjm))
@@ -209,5 +209,5 @@ total_reactions <- ecount(g)
 total_interface <- ecount(g) - length(c12)
 deg <- degree(g, mode = "out")	
  
-save(list = ls(), file = paste("../", gsub(".mat",".RData",filename[k]), sep = ""))
+save(list = ls(), file = paste("../", gsub(".mat",".RData",k), sep = ""))
 print('Done')

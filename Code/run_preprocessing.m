@@ -1,4 +1,4 @@
-function [model,name] = run_preprocessing(files,f,type,pathToR)
+function [model,name] = run_preprocessing(files,f)
 
 % the code runs the preprocessing of models in folder Models/original 
 % and split of reactions into elementary reaction steps under 
@@ -71,70 +71,28 @@ end
 
 clear BLK sol solo files
 
-%% split into elementary reactions
-disp('split reactions into elementary reactions')
-if strcmp(type,'fixed') || strcmp(type,'ordered')
-    model_elementary_fixed = split_into_elementary_rxns_v1(model,'fixed');
-elseif strcmp(type,'random')
-    model_elementary_random = split_into_elementary_rxns_v1(model,'random');
-else 
-    warning('model reactions are split assuming ordered binding, to assume random binding change input arguments')
-end
-
-if strcmp(type,'random')
-    [sol.x,sol.f,sol.stat,sol.output]=linprog(-model_elementary_random.c,model_elementary_random.S(model_elementary_random.csense=='L',:),model_elementary_random.b(model_elementary_random.csense=='L'),model_elementary_random.S(model_elementary_random.csense=='E',:),model_elementary_random.b(model_elementary_random.csense=='E'),model_elementary_random.lb,model_elementary_random.ub);
-    
-    model_elementary_random = convertToIrreversible(model_elementary_random);
-    % save file 
-    mkdir('Models/temp/')
-    save(strcat('Models/temp/',name,'_random.mat'),"model_elementary_random")
-    
-    cd Code/preprocessing/
-
-    % pathToR = 'C:\Users\Anika\AppData\Local\Programs\R\R-4.3.0\bin\Rscript.exe';
-    system(strjoin({pathToR, ' get_AY_matrix.r',strcat('../../Models/temp/',name,'_random.mat')}));
-    
-    cd ../../Models/temp/
-    % random model
-    load(strcat(name,'_random_A.dat'))
-    load(strcat(name, '_random_complexes.mat'))
-    model_elementary_random.A=eval(['spconvert(' strcat(name,'_random_A') ')']);
-    model_elementary_random.complexes=complexes;
-    load(strcat(name,'_random_Y.dat'))
-    model_elementary_random.Y=eval(['spconvert(' strcat(name,'_random_Y') ')']);
-    clear complexes *_random_A *_random_Y
-    cd ../../
-    
-    save(['Models/models_with_elementary_steps/' name '_pre_balanced_random.mat'],'-v7.3')
-else
-    [sol.x,sol.f,sol.stat,sol.output]=linprog(-model_elementary_fixed.c,model_elementary_fixed.S(model_elementary_fixed.csense=='L',:),model_elementary_fixed.b(model_elementary_fixed.csense=='L'),model_elementary_fixed.S(model_elementary_fixed.csense=='E',:),model_elementary_fixed.b(model_elementary_fixed.csense=='E'),model_elementary_fixed.lb,model_elementary_fixed.ub);
-    
-    model_elementary_fixed = convertToIrreversible(model_elementary_fixed);
-    mkdir('Models/temp/')
-    save(strcat('Models/temp/',name,'_fixed.mat'),"model_elementary_fixed")
+model_elementary = convertToIrreversible(model);
+mkdir('Models/temp/')
+save(strcat('Models/temp/',name,'.mat'),"model_elementary")
     
     cd Code/preprocessing/
     % pathToR = '"C:\Users\Anika\AppData\Local\Programs\R\R-4.3.0\bin\Rscript.exe"';
-    system(strjoin({pathToR, ' get_AY_matrix.r',strcat('../../Models/temp/',name,'_fixed.mat')}));
+    system(strjoin({'Rscript get_AY_matrix.r',strcat('../../Models/temp/',name,'.mat')}));
     
     cd ../../Models/temp/
     % fixed model
-    load(strcat(name,'_fixed_A.dat'))
-    load(strcat(name, '_fixed_complexes.mat'))
-    model_elementary_fixed.A=eval(['spconvert(' strcat(name,'_fixed_A') ')']);
-    model_elementary_fixed.complexes=complexes;
-    load(strcat(name,'_fixed_Y.dat'))
-    model_elementary_fixed.Y=eval(['spconvert(' strcat(name,'_fixed_Y') ')']);
-    clear complexes *_fixed_A *fixed_Y
+    load(strcat(name,'_A.dat'))
+    load(strcat(name, '_complexes.mat'))
+    model_elementary.A=eval(['spconvert(' strcat(name,'_A') ')']);
+    model_elementary.complexes=complexes;
+    load(strcat(name,'_Y.dat'))
+    model_elementary.Y=eval(['spconvert(' strcat(name,'_Y') ')']);
+    clear complexes *_A *_Y
     cd ../../
     
-    save(['Models/models_with_elementary_steps/' name '_pre_balanced_fixed.mat'],'-v7.3')
-end
+    save(['Models/models_irrev/' name '_pre_balanced.mat'],'-v7.3')
+
 system('rm -r Models/temp/')
-if exist('model_elementary_fixed')
-    model = model_elementary_fixed;
-else
-    model = model_elementary_random;
-end
+model = model_elementary;
 
 end
