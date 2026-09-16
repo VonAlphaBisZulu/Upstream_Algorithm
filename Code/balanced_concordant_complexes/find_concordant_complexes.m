@@ -18,7 +18,9 @@ end
 disp(length(At(:,2)))
 disp('start...')
 
+% Flux bounds under w = t*v: lb*t <= w <= ub*t for t > 0, and reversed for t < 0.
 a = sparse([eye(size(model.S,2)) -model.ub; -eye(size(model.S,2)) model.lb]);
+a_neg = sparse([eye(size(model.S,2)) -model.lb; -eye(size(model.S,2)) model.ub]);
 
 for i=start:stop
     % disp(i)
@@ -48,13 +50,13 @@ for i=start:stop
     end
     if At(i,1)~=At(i,2) && group(At(i,2))~='P'
 
-        [R.x,R.f_k,R.ExitFlag]=linprog([-model.A(At(i,1),:) 1],a,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -999],[ones(size(model.S,2),1)*1e9; 0],options);
+        [R.x,R.f_k,R.ExitFlag]=linprog([-model.A(At(i,1),:) 1],a_neg,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -999],[ones(size(model.S,2),1)*1e9; 0],options);
 
         if R.ExitFlag == 1
 
             Maximum_c_n = (model.A(At(i,1),:)*R.x(1:end-1))/(model.A(At(i,2),:)*R.x(1:end-1));
 
-            [R.x,R.f_k,R.ExitFlag]=linprog([model.A(At(i,1),:) 1],a,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -999],[ones(size(model.S,2),1)*1e9; 0],options);
+            [R.x,R.f_k,R.ExitFlag]=linprog([model.A(At(i,1),:) 1],a_neg,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -999],[ones(size(model.S,2),1)*1e9; 0],options);
 
             if R.ExitFlag == 1
 
