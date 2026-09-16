@@ -106,7 +106,7 @@ autonom <- function(x, g){ ##x contains the union of concordance module and the 
 		{
 			terminal[i] <- terminal_c[clust$membership[i]]
 		}
-		phaseIV <- x[terminal == 0] ##which complexes are non-terminal
+		phaseIV <- x[terminal[x] == 0] ##which complexes are non-terminal
 	}
 	return(union(phaseIII, phaseIV))
 }
