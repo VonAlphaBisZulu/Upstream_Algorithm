@@ -25,6 +25,10 @@ a_neg = sparse([eye(size(model.S,2)) -model.lb; -eye(size(model.S,2)) model.ub])
 for i=start:stop
     % disp(i)
 
+    % Only the branch matching the denominator's sign group is evaluated.
+    Maximum_c_p = Inf; Minimum_c_p = -Inf;
+    Maximum_c_n = Inf; Minimum_c_n = -Inf;
+
     if At(i,1)~=At(i,2) && group(At(i,2))~='N'
 
         % Under w = t*v the ratio is A_i.w, with A_j.w = 1; the numerator carries no
@@ -72,18 +76,39 @@ for i=start:stop
         end
     end
     % update CC, concordant pair denoted by value 2
+    % An infeasible branch means the denominator never takes that sign, so the ratio only has
+    % to be constant over the branches that were solved.
+    p_solved = isfinite(Maximum_c_p) && isfinite(Minimum_c_p);
+    n_solved = isfinite(Maximum_c_n) && isfinite(Minimum_c_n);
     if group(At(i,2)) == 'P' && CC(At(i,1),At(i,2)) == 0
-        CC(At(i,1),At(i,2)) = (round(Maximum_c_p,2) == round(Minimum_c_p,2))*2;
+        CC(At(i,1),At(i,2)) = (p_solved && ratios_agree(Maximum_c_p, Minimum_c_p))*2;
     elseif group(At(i,2)) == 'N' && CC(At(i,1),At(i,2)) == 0
-        CC(At(i,1),At(i,2)) = (round(Maximum_c_n,2) == round(Minimum_c_n,2))*2;
+        CC(At(i,1),At(i,2)) = (n_solved && ratios_agree(Maximum_c_n, Minimum_c_n))*2;
     elseif CC(At(i,1),At(i,2)) == 0
-        CC(At(i,1),At(i,2)) = (round(Maximum_c_p,2) == round(Minimum_c_p,2) & ...
-            round(Maximum_c_n,2) == round(Minimum_c_n,2) & ...
-            round(Maximum_c_p,2) == round(Minimum_c_n,2))*2;
+        if p_solved && n_solved
+            verdict = ratios_agree(Maximum_c_p, Minimum_c_p) && ...
+                      ratios_agree(Maximum_c_n, Minimum_c_n) && ...
+                      ratios_agree(Maximum_c_p, Minimum_c_n);
+        elseif p_solved
+            verdict = ratios_agree(Maximum_c_p, Minimum_c_p);
+        elseif n_solved
+            verdict = ratios_agree(Maximum_c_n, Minimum_c_n);
+        else
+            verdict = false;
+        end
+        CC(At(i,1),At(i,2)) = verdict*2;
     end
 end
 
 % save(['Results/concordant_random/' strrep(name,'_pre','') '_' num2str(size(At,1)) '_' num2str(start) '_' num2str(stop) '.mat'],'-v7.3')
 % save(['Results/concordant_fixed/' strrep(name,'_pre','') '_' num2str(size(At,1)) '_' num2str(start) '_' num2str(stop) '.mat'],'-v7.3')
 
+end
+
+function tf = ratios_agree(a, b)
+% Whether two ratio bounds are the same number, to solver precision. Relative, so the
+% comparison does not loosen as the ratio approaches zero.
+
+  tol = 1e-9;
+  tf = isfinite(a) && isfinite(b) && abs(a - b) <= tol * max([abs(a), abs(b), 1]);
 end
