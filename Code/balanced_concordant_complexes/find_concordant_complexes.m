@@ -22,6 +22,10 @@ disp('start...')
 a = sparse([eye(size(model.S,2)) -model.ub; -eye(size(model.S,2)) model.lb]);
 a_neg = sparse([eye(size(model.S,2)) -model.lb; -eye(size(model.S,2)) model.ub]);
 
+% Bound on the scaling variable t, per denominator: 999 / max|A_j.v|, so that A_j.w = 1 is
+% reachable whatever the denominator's activity scale.
+scale = nan(size(model.A,1),1);
+
 for i=start:stop
     % disp(i)
 
@@ -29,20 +33,29 @@ for i=start:stop
     Maximum_c_p = Inf; Minimum_c_p = -Inf;
     Maximum_c_n = Inf; Minimum_c_n = -Inf;
 
+    j = At(i,2);
+    if isnan(scale(j))
+        [~,fmax,ef1] = linprog(-model.A(j,:),[],[],model.S,model.b,model.lb,model.ub,options);
+        [~,fmin,ef2] = linprog( model.A(j,:),[],[],model.S,model.b,model.lb,model.ub,options);
+        scale(j) = max([abs(fmax)*(ef1==1), abs(fmin)*(ef2==1)]);
+        if scale(j) == 0, scale(j) = 1; end
+    end
+    tmax = 999/scale(j);
+
     if At(i,1)~=At(i,2) && group(At(i,2))~='N'
 
         % Under w = t*v the ratio is A_i.w, with A_j.w = 1; the numerator carries no
         % constant term, so t has coefficient 0 in the objective.
         % maximize
 
-        [R.x,R.f_k,R.ExitFlag]=linprog([-model.A(At(i,1),:) 0],a,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; 0],[ones(size(model.S,2),1)*1e9; 999],options);
+        [R.x,R.f_k,R.ExitFlag]=linprog([-model.A(At(i,1),:) 0],a,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; 0],[ones(size(model.S,2),1)*1e9; tmax],options);
 
         if R.ExitFlag == 1
 
             Maximum_c_p = (model.A(At(i,1),:)*R.x(1:end-1))/(model.A(At(i,2),:)*R.x(1:end-1));
 
             % minimize
-            [R.x,R.f_k,R.ExitFlag]=linprog([model.A(At(i,1),:) 0],a,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; 0],[ones(size(model.S,2),1)*1e9; 999],options);
+            [R.x,R.f_k,R.ExitFlag]=linprog([model.A(At(i,1),:) 0],a,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; 0],[ones(size(model.S,2),1)*1e9; tmax],options);
 
             if R.ExitFlag == 1
 
@@ -56,13 +69,13 @@ for i=start:stop
     end
     if At(i,1)~=At(i,2) && group(At(i,2))~='P'
 
-        [R.x,R.f_k,R.ExitFlag]=linprog([-model.A(At(i,1),:) 0],a_neg,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -999],[ones(size(model.S,2),1)*1e9; 0],options);
+        [R.x,R.f_k,R.ExitFlag]=linprog([-model.A(At(i,1),:) 0],a_neg,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -tmax],[ones(size(model.S,2),1)*1e9; 0],options);
 
         if R.ExitFlag == 1
 
             Maximum_c_n = (model.A(At(i,1),:)*R.x(1:end-1))/(model.A(At(i,2),:)*R.x(1:end-1));
 
-            [R.x,R.f_k,R.ExitFlag]=linprog([model.A(At(i,1),:) 0],a_neg,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -999],[ones(size(model.S,2),1)*1e9; 0],options);
+            [R.x,R.f_k,R.ExitFlag]=linprog([model.A(At(i,1),:) 0],a_neg,[zeros(size(model.S,2),1);zeros(size(model.S,2),1)],[model.S zeros(size(model.S,1),1); model.A(At(i,2),:) 0],[model.b;1],[-ones(size(model.S,2),1)*1e9; -tmax],[ones(size(model.S,2),1)*1e9; 0],options);
 
             if R.ExitFlag == 1
 
